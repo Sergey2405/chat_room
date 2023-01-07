@@ -1,0 +1,12 @@
+{application, chat_room, [
+    {description, ""},
+    {vsn, "1"},
+    {registered, []},
+    {applications, [
+        kernel,stdlib,crypto,cowboy,
+        % compiler,lager,syntax_tools
+        compiler,syntax_tools
+    ]},
+    {mod, { chat_room_app, []}},
+    {env, []}
+]}.
