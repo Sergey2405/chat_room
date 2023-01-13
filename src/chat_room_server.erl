@@ -66,16 +66,16 @@ handle_call({save_pid,{Pid, UserName}}, _From, State) ->
           lists:keyfind(UserName, 2, Users),
           lists:keyfind(Pid, 1, Websockets)} of
       {false, false, false} -> {reply, unknown_user, State};
-      {_, _, true} -> {reply, pid_is_used, State};
-      {false, {NameValue, CryptedValue}, false} ->
+      {_, _, Websocket} when Websocket =/= false -> {reply, pid_is_used, State};
+      {false, {NameValue, _CryptedValue}, false} ->
         {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}};
-      {{NameValue, CryptedValue}, false, false} ->
+      {{NameValue, _CryptedValue}, false, false} ->
         {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}}
     end;
 handle_call(get_messages, _From, State) ->
     {reply, State#state.messages, State};
 %% not used.
-handle_call({send_message, NewMessage = {User, Message}}, _From, State) ->
+handle_call({send_message, NewMessage = {_User, _Message}}, _From, State) ->
     {reply, ok,
      State#state{messages = lists:sublist([NewMessage|State#state.messages], 1,
                                           application:get_env(?APP, number_of_kept_messages,
@@ -98,8 +98,8 @@ handle_call({delete_pid, Pid}, _From, State) ->
               %% no more connection for the user exists.
               %% delete him.
               gen_server:cast(?MODULE, {send_message_to_everyone, {TokenUserName, exited}}),
-              [Elem || Elem = {UserName, CryptedUserName} <- Users, UserName =/= TokenUserName];
-            {TokenPid, TokenUserName} ->
+              [Elem || Elem = {UserName, _CryptedUserName} <- Users, UserName =/= TokenUserName];
+            {_TokenPid, TokenUserName} ->
               %% one more connection for the user.
               %% do nothing
               Users
@@ -148,7 +148,7 @@ do_send_message_to_everyone({PidOrUserName, Message}, State) ->
       case Message of
         entered -> TextUserName ++ " entrered.";
         exited -> TextUserName ++ " exited.";
-        Value -> TextUserName ++ ": " ++ Message
+        _Value -> TextUserName ++ ": " ++ Message
       end,
     NewWebsockets =
       lists:foldl(fun({Pid, _} = Websocket, Acc) ->
@@ -169,7 +169,7 @@ do_send_message_to_everyone({PidOrUserName, Message}, State) ->
                websockets = NewWebsockets}.
 
 
-connect_user({UserName, CryptedUserName} = User) ->
+connect_user({_UserName, CryptedUserName} = User) ->
     gen_server:call(?MODULE, {connect_user, User}).
 
 save_pid(UserName) when is_binary(UserName) ->
@@ -234,8 +234,8 @@ loop_trickster_bot(Interval, UserName, RandomMessages) ->
         loop_trickster_bot(Interval, UserName, RandomMessages)
     end.
 
-fetch_random_message() ->
-    fetch_random_message(?TRICKSTER_RANDOM_MESSAGES).
+% fetch_random_message() ->
+%     fetch_random_message(?TRICKSTER_RANDOM_MESSAGES).
 
 fetch_random_message(Messages) ->
     [Message] = lists:sublist(Messages, rand:uniform(length(Messages)), 1),

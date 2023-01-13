@@ -72,7 +72,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             end
         end
     end;
-init(Method, Path, Body, Req, State) ->
+init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(404, #{}, <<"page not found">>, Req),
     {ok, NewReq, State}.
 
