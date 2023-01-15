@@ -22,10 +22,9 @@
 
 -include("chat_room.hrl").
 
--record(state, {
-    messages = [] :: [{string(), string()}],
-    connected_users = [] :: [{string(), string()}],
-    websockets = [] :: [{pid(), string()}] }).
+-record(state, {messages = [] :: [{string(), string()}],
+                connected_users = [] :: [{string(), string()}],
+                websockets = [] :: [{pid(), string()}] }).
 
 start_link() ->
     gen_server:start_link({local, ?MODULE}, ?MODULE, [], []).
@@ -35,12 +34,12 @@ stop() ->
 
 init([]) ->
     case application:get_env(?APP, trickster_bot, false) of
-      true ->
-        spawn_link(?MODULE, start_trickster_bot,
-                   [application:get_env(?APP, trickster_bot_interval, ?TRICKSTER_BOT_INTERVAL),
-                    application:get_env(?APP, trickster_bot_name, ?TRICKSTER_BOT_NAME),
-                    application:get_env(?APP, trickster_random_messages, ?TRICKSTER_RANDOM_MESSAGES)]);
-      false -> no_trickstrer_bot
+        true ->
+            spawn_link(?MODULE, start_trickster_bot,
+                       [application:get_env(?APP, trickster_bot_interval, ?TRICKSTER_BOT_INTERVAL),
+                        application:get_env(?APP, trickster_bot_name, ?TRICKSTER_BOT_NAME),
+                        application:get_env(?APP, trickster_random_messages, ?TRICKSTER_RANDOM_MESSAGES)]);
+        false -> no_trickstrer_bot
     end,
     {ok, #state{}}.
 
@@ -48,9 +47,9 @@ handle_call({connect_user, {UserName, CryptedUserName} = User}, _From, State) ->
     Users = State#state.connected_users,
     case {lists:keyfind(UserName, 1, Users),
           lists:keyfind(CryptedUserName, 2, Users)} of
-     {false, false} ->
-       {reply, ok, State#state{connected_users = [User|State#state.connected_users]}};
-      _ -> {reply, already_exists, State}
+         {false, false} ->
+                {reply, ok, State#state{connected_users = [User|State#state.connected_users]}};
+          _ -> {reply, already_exists, State}
     end;
 handle_call({get_connected_user, CryptedUserName}, _From, State) ->
     Users = State#state.connected_users,
@@ -65,12 +64,12 @@ handle_call({save_pid,{Pid, UserName}}, _From, State) ->
     case {lists:keyfind(UserName, 1, Users),
           lists:keyfind(UserName, 2, Users),
           lists:keyfind(Pid, 1, Websockets)} of
-      {false, false, false} -> {reply, unknown_user, State};
-      {_, _, Websocket} when Websocket =/= false -> {reply, pid_is_used, State};
-      {false, {NameValue, _CryptedValue}, false} ->
-        {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}};
-      {{NameValue, _CryptedValue}, false, false} ->
-        {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}}
+        {false, false, false} -> {reply, unknown_user, State};
+        {_, _, Websocket} when Websocket =/= false -> {reply, pid_is_used, State};
+        {false, {NameValue, _CryptedValue}, false} ->
+            {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}};
+        {{NameValue, _CryptedValue}, false, false} ->
+            {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}}
     end;
 handle_call(get_messages, _From, State) ->
     {reply, State#state.messages, State};
@@ -87,24 +86,24 @@ handle_call({delete_pid, Pid}, _From, State) ->
     Users = State#state.connected_users,
 
     NewUsers =
-      case lists:keyfind(Pid, 1, Websockets) of
-        false ->
-          %% corresponding user is not found.
-          %% do nothing.
-          Users;
-        {_, TokenUserName} ->
-          case lists:keyfind(TokenUserName, 2, NewWebSockets) of
+        case lists:keyfind(Pid, 1, Websockets) of
             false ->
-              %% no more connection for the user exists.
-              %% delete him.
-              gen_server:cast(?MODULE, {send_message_to_everyone, {TokenUserName, exited}}),
-              [Elem || Elem = {UserName, _CryptedUserName} <- Users, UserName =/= TokenUserName];
-            {_TokenPid, TokenUserName} ->
-              %% one more connection for the user.
-              %% do nothing
-              Users
-          end
-      end,
+                %% corresponding user is not found.
+                %% do nothing.
+            Users;
+            {_, TokenUserName} ->
+                case lists:keyfind(TokenUserName, 2, NewWebSockets) of
+                    false ->
+                        %% no more connection for the user exists.
+                        %% delete him.
+                        gen_server:cast(?MODULE, {send_message_to_everyone, {TokenUserName, exited}}),
+                        [Elem || Elem = {UserName, _CryptedUserName} <- Users, UserName =/= TokenUserName];
+                    {_TokenPid, TokenUserName} ->
+                        %% one more connection for the user.
+                        %% do nothing
+                        Users
+              end
+        end,
 
     {reply, ok, State#state{websockets = NewWebSockets,
                             connected_users = NewUsers}};
@@ -145,28 +144,28 @@ do_send_message_to_everyone({PidOrUserName, Message}, State) ->
          true -> "Anonimous"
        end,
     TextMessage =
-      case Message of
-        entered -> TextUserName ++ " entrered.";
-        exited -> TextUserName ++ " exited.";
-        _Value -> TextUserName ++ ": " ++ Message
-      end,
+        case Message of
+            entered -> TextUserName ++ " entrered.";
+            exited -> TextUserName ++ " exited.";
+            _Value -> TextUserName ++ ": " ++ Message
+        end,
     NewWebsockets =
-      lists:foldl(fun({Pid, _} = Websocket, Acc) ->
-                        case is_process_alive(Pid) of
-                          true ->
-                            Pid ! TextMessage,
-                            [Websocket|Acc];
-                          false ->
-                            % gen_server:handle_cast(?MODULE, {delete_pid, Pid}),
-                            Acc
-                        end;
-                     (_, Acc) -> Acc
-                  end,
-                  [], Websockets),
+          lists:foldl(fun({Pid, _} = Websocket, Acc) ->
+                            case is_process_alive(Pid) of
+                                true ->
+                                    Pid ! TextMessage,
+                                    [Websocket|Acc];
+                                false ->
+                                    gen_server:cast(?MODULE, {delete_pid, Pid}),
+                                    Acc
+                            end;
+                          (_, Acc) -> Acc
+                      end,
+                      [], Websockets),
     State#state{messages = lists:sublist([{TextUserName, Message}|State#state.messages], 1,
                                          application:get_env(?APP, number_of_kept_messages,
                                                              ?CHAT_ROOM_NUMBER_OF_KEPT_MESSAGES)),
-               websockets = NewWebsockets}.
+                websockets = NewWebsockets}.
 
 
 connect_user({_UserName, CryptedUserName} = User) ->
@@ -185,14 +184,14 @@ get_connected_user(CryptedUserName) ->
 get_messages() ->
     Messages = gen_server:call(?MODULE, get_messages),
     TextArea = 
-      fun ({User, entered}, Acc) ->
-            User ++ " entered.\n" ++ Acc;
-          ({User, exited}, Acc) ->
-            User ++ " exited.\n" ++ Acc;
-          ({User, Message}, Acc) ->
-            User ++ ": " ++ Message ++ "\n" ++ Acc;
-          (_, Acc) -> Acc
-      end,
+        fun ({User, entered}, Acc) ->
+                User ++ " entered.\n" ++ Acc;
+            ({User, exited}, Acc) ->
+                User ++ " exited.\n" ++ Acc;
+            ({User, Message}, Acc) ->
+                User ++ ": " ++ Message ++ "\n" ++ Acc;
+            (_, Acc) -> Acc
+        end,
     lists:foldl(TextArea, "", Messages).
 
 send_message(Message) ->
@@ -202,8 +201,8 @@ send_message_to_everyone(Message) when is_binary(Message) ->
     send_message_to_everyone({self(), binary:bin_to_list(Message)});
 send_message_to_everyone({text, Message}) ->
     send_message_to_everyone(Message);
-send_message_to_everyone([{text, Message}|_]) ->
-    send_message_to_everyone(Message);
+% send_message_to_everyone([{text, Message}|_]) ->
+%     send_message_to_everyone(Message);
 send_message_to_everyone(Message) when is_list(Message) or is_atom(Message) ->
     send_message_to_everyone({self(), Message});
 send_message_to_everyone({PidOrUserName, Message}) when (is_list(PidOrUserName) or
