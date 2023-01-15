@@ -67,9 +67,8 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             end
     end;
 init(_Method, _Path, _Body, Req, State) ->
-    NewReq = cowboy_req:reply(404, #{}, <<"page not found">>, Req),
+    NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
     {ok, NewReq, State}.
-
 
 
 enter_home_page(Flag, Body, Req, State) ->
