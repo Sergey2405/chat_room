@@ -82,7 +82,7 @@ enter_home_page(Flag, Body, Req, State) ->
 
     HTML =
       "<!DOCTYPE html\">
-      <head?
+      <head>
        <title>Erlang chat room</title>
       </head>
 
