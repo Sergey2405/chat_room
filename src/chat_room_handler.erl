@@ -70,6 +70,45 @@ init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
     {ok, NewReq, State}.
 
+handle(Req, State) ->
+    logger:debug("Request not expected: ~p", [Req]),
+    {ok, Req2} = cowboy_http_req:reply(404, [{'Content-Type', <<"text/html">>}]),
+    {ok, Req2, State}.
+
+websocket_init(_TransportName, Req, _Opts) ->
+    logger:debug("websocket_init/3 with Req: ~p" , [Req]),
+    {ok, Req, undefined_state}.
+
+websocket_handle(Req, State) ->
+    logger:debug("websocket_handle with Req: ~p",[Req]),
+    chat_room_server:send_message_to_everyone(Req),
+    {ok, State}.
+
+websocket_handle({text, Msg}, Req, State) ->
+    logger:debug("Got Data: ~p", [Msg]),
+    {reply, {text, << "responding to ", Msg/binary >>}, Req, State, hibernate };
+
+websocket_handle(_Any, Req, State) ->
+    {reply, {text, << "what?">>}, Req, State, hibernate }.
+
+websocket_info(Req, State) ->
+    {reply, {text, Req}, State}.
+
+websocket_info({timeout, _Ref, Msg}, Req, State) ->
+    {reply, {text, Msg}, Req, State};
+
+websocket_info(_Info, Req, State) ->
+    logger:debug("websocket info/3"),
+    {ok, Req, State, hibernate}.
+
+websocket_terminate(_Reason, _Req, _State) ->
+    ok.
+
+terminate(Reason, _Req, State) ->
+    logger:debug("terminate with Reason: ~p",[Reason]),
+    if Reason == timeout -> chat_room_server:delete_pid();
+       true -> ok
+    end.
 
 enter_home_page(Flag, Body, Req, State) ->
     {HTTPResponse, Title} =
@@ -178,45 +217,6 @@ chat_room(Method, TextUserName, Body, Req, State) ->
 
     NewReq = cowboy_req:reply(200, #{}, HTML, Req),
     {ok, NewReq, State}.
-handle(Req, State) ->
-    logger:debug("Request not expected: ~p", [Req]),
-    {ok, Req2} = cowboy_http_req:reply(404, [{'Content-Type', <<"text/html">>}]),
-    {ok, Req2, State}.
-
-websocket_init(_TransportName, Req, _Opts) ->
-    logger:debug("websocket_init/3 with Req: ~p" , [Req]),
-    {ok, Req, undefined_state}.
-
-websocket_handle(Req, State) ->
-    logger:debug("websocket_handle with Req: ~p",[Req]),
-    chat_room_server:send_message_to_everyone(Req),
-    {ok, State}.
-
-websocket_handle({text, Msg}, Req, State) ->
-    logger:debug("Got Data: ~p", [Msg]),
-    {reply, {text, << "responding to ", Msg/binary >>}, Req, State, hibernate };
-
-websocket_handle(_Any, Req, State) ->
-    {reply, {text, << "what?">>}, Req, State, hibernate }.
-
-websocket_info(Req, State) ->
-    {reply, {text, Req}, State}.
-
-websocket_info({timeout, _Ref, Msg}, Req, State) ->
-    {reply, {text, Msg}, Req, State};
-
-websocket_info(_Info, Req, State) ->
-    logger:debug("websocket info/3"),
-    {ok, Req, State, hibernate}.
-
-websocket_terminate(_Reason, _Req, _State) ->
-    ok.
-
-terminate(Reason, _Req, State) ->
-    logger:debug("terminate with Reason: ~p",[Reason]),
-    if Reason == timeout -> chat_room_server:delete_pid();
-       true -> ok
-    end.
 
 get_body(Key, UriBody) ->
     try binary:bin_to_list(proplists:get_value(Key, uri_string:dissect_query(UriBody))) of
