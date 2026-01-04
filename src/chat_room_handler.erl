@@ -80,38 +80,12 @@ enter_home_page(Flag, Body, Req, State) ->
         end,
     Host = binary:bin_to_list(cowboy_req:host(Req)),
 
-    HTML =
-      "<!DOCTYPE html\">
-      <head>
-       <title>Erlang chat room</title>
-      </head>
-
-      <div id=\"menu\">
-        <p class=\"welcome\">" ++ Title ++ " <b></b></p>
-        <div style=\"clear:both\"></div>
-      </div>
-      <div>
-      <form name=\"formusername\" id= \"formusername\" method='post' />
-          <input name=\"textusername\" id=\"textusername\"
-                 type=\"text\" height=\"auto\" />
-          <input name=\"submitusername\"  id=\"submitusername\"
-                 type=\"submit\" value=\"Enter chat\"
-                 onclick=\"updateValue();\" />
-      </form>
-      </div>
-      <script>
-        //enctypt user name in URL
-        function updateValue(){
-            var name =  document.getElementById('textusername').value;
-            var random = Math.random().toString().substr(2, 8);
-            encrypted_name = window.btoa(name);
-            var path = \"/chat_room?crypteduser=\" + encrypted_name + random;
-            document.formusername.action = path;
-            document.forms[\"formusername\"].submit();
-            return false;
-        };
-      </script>
-      </html>",
+    HTML =  case file:read_file("src/home.html") of
+                {ok, BinaryConenent} ->
+                    binary_to_list(BinaryConenent);
+                {error, Reason} ->
+                    binary_to_list(Reason)
+            end,
 
     NewReq = cowboy_req:reply(HTTPResponse,#{},HTML,Req),
     {ok, NewReq, State}.
