@@ -157,9 +157,6 @@ chat_room(Method, TextUserName, Body, Req, State) ->
     Html3 = re:replace(Html2, "TEXT AREA", TextArea),
     Html  = re:replace(Html3, "HOST PORT", Host ++ ":" ++ integer_to_list(application:get_env(cowboy, port, ?COWBOY_PORT))),
 
-    io:format("TextArea = ~p~n", [TextArea]),
-
-
     NewReq = cowboy_req:reply(200, #{}, Html, Req),
     {ok, NewReq, State}.
 
@@ -176,13 +173,3 @@ parse_qs(Key, Req) ->
     catch
         _:_ -> undefined
     end.
-
-find_title([{element, title, _, _, _, Children}|_Rest]) ->
-    % Extract the text content from the children of the title tag
-    lists:flatten([C || {text, _, C} <- Children]);
-find_title([_Head|Rest]) ->
-    % Continue searching in the rest of the list
-    find_title(Rest);
-find_title([]) ->
-    % Title not found
-    "Untitled".
