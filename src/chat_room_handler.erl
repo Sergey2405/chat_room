@@ -111,22 +111,23 @@ terminate(Reason, _Req, State) ->
     end.
 
 enter_home_page(Flag, Body, Req, State) ->
-    {HTTPResponse, Title} =
+    {HTTPResponse, WelcomeText} =
         case Flag of
-            enter -> {200, "Welcome. Please enter your name"};
+            enter -> {200, "Welcome. Please enter your name."};
             already_exists -> {401, "Please enter under another user since he has already connected."};
             does_not_exist -> {401, "Please enter user name again since you have tried to send a message under not connected user."}
         end,
     Host = binary:bin_to_list(cowboy_req:host(Req)),
 
-    HTML =  case file:read_file("src/home.html") of
+    RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->
-                    binary_to_list(BinaryConenent);
+                    BinaryConenent;
                 {error, Reason} ->
-                    binary_to_list(Reason)
-            end,
+                    Reason
+               end,
+    Html = re:replace(RawHtml, "WelcomeText", WelcomeText),
 
-    NewReq = cowboy_req:reply(HTTPResponse,#{},HTML,Req),
+    NewReq = cowboy_req:reply(HTTPResponse,#{}, Html, Req),
     {ok, NewReq, State}.
 
 % chatroom post message.
@@ -232,3 +233,12 @@ parse_qs(Key, Req) ->
         _:_ -> undefined
     end.
 
+find_title([{element, title, _, _, _, Children}|_Rest]) ->
+    % Extract the text content from the children of the title tag
+    lists:flatten([C || {text, _, C} <- Children]);
+find_title([_Head|Rest]) ->
+    % Continue searching in the rest of the list
+    find_title(Rest);
+find_title([]) ->
+    % Title not found
+    "Untitled".
