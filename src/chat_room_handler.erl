@@ -125,7 +125,7 @@ enter_home_page(Flag, Body, Req, State) ->
                 {error, Reason} ->
                     Reason
                end,
-    Html = re:replace(RawHtml, "WelcomeText", WelcomeText),
+    Html = re:replace(RawHtml, "WELCOME TEXT", WelcomeText),
 
     NewReq = cowboy_req:reply(HTTPResponse,#{}, Html, Req),
     {ok, NewReq, State}.
@@ -145,78 +145,22 @@ chat_room(Method, TextUserName, Body, Req, State) ->
     end,
     TextArea = chat_room_server:get_messages(),
     Host = binary:bin_to_list(cowboy_req:host(Req)),
-    HTML =
-      "<!DOCTYPE html\">
-      <head>
-       <title>Erlang chat room</title>
-      </head>
 
-       <body onload=\"open();\" >
-        <div id=\"menu\">
-          <p class=\"welcome\">Welcome <b></b></p>
-          <a href=\"./\">Home</a>
-        <form name=\"formchatarea\" method=\"get\" >
-          <textarea readonly
-                    name=\"chatarea\" id=\"chatarea\" 
-                    rows=\"" ++ integer_to_list(?CHAT_WINDOW_ROWS) ++
-                 "\" cols=\"" ++ integer_to_list(?CHAT_WINDOW_COLS) ++ "\"/>" ++
-                    TextArea  ++"
-         </textarea>
-        </form>
-        <form name=\"formmessage\">
-          <input name=\"usermsg\"  id=\"usermsg\" 
-                 type=\"text\" size=\"160\" onkeypress=\"javascript:clickPress(event);\"/>
-          <a href=\"javascript:send()\">Send</a>
-        </form>
-       </div>
-      </body>
-      <script>
-        function clickPress(event){
-            if(event.keyCode === 13){
-                event.preventDefault();
-                send();
-            }
-            console.log('clickPress ' + event.keyCode);
+    RawHtml =  case file:read_file("src/chat_room.html") of
+            {ok, BinaryConenent} ->
+                BinaryConenent;
+            {error, Reason} ->
+                Reason
+           end,
+    Html1 = re:replace(RawHtml, "CHAT WINDOW ROWS", integer_to_list(?CHAT_WINDOW_ROWS)),
+    Html2 = re:replace(Html1, "CHAT WINDOW COLS", integer_to_list(?CHAT_WINDOW_COLS)),
+    Html3 = re:replace(Html2, "TEXT AREA", TextArea),
+    Html  = re:replace(Html3, "HOST PORT", Host ++ ":" ++ integer_to_list(application:get_env(cowboy, port, ?COWBOY_PORT))),
 
-        }
-        function send()
-        {
-            var name =  document.getElementById('usermsg').value;
-            ws.send(name);
-            console.log('Message sent:' + name);
-        }
+    io:format("TextArea = ~p~n", [TextArea]),
 
-        function open()
-        {
-            if (!(\"WebSocket\" in window)) {
-                alert(\"This browser does not support WebSockets\");
-                return;
-            };
-            var keyValues = window.location.search;
-            var urlParams = new URLSearchParams(keyValues);
-            userparam = urlParams.get('crypteduser');
-            ws = new WebSocket(\"ws://" ++ Host ++ ":" ++
-                                 integer_to_list(application:get_env(cowboy, port, ?COWBOY_PORT)) ++
-                                 "/chat_room?crypteduser=\" + userparam);
-            ws.onopen = function() {
-                console.log('Connected');
-            };
-            ws.onmessage = function (evt)
-            {
-                var received_msg = evt.data;
-                var area = document.getElementById('chatarea');
-                area.value += \"\\n\" + received_msg;// it works but stops
-                return
-            };
-            ws.onclose = function()
-            {
-                console.log('Connection closed');
-            };
-        }
-      </script>
-      </html>",
 
-    NewReq = cowboy_req:reply(200, #{}, HTML, Req),
+    NewReq = cowboy_req:reply(200, #{}, Html, Req),
     {ok, NewReq, State}.
 
 get_body(Key, UriBody) ->

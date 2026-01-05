@@ -1,0 +1,66 @@
+<!DOCTYPE html">
+<head>
+<title>Erlang chat room</title>
+</head>
+
+<body onload="open();" >
+<div id="menu">
+  <p class="welcome">Welcome <b></b></p>
+  <a href="./">Home</a>
+<form name="formchatarea" method="get" >
+  <textarea readonly
+            name="chatarea" id="chatarea" 
+            rows="CHAT WINDOW ROWS" cols= "CHAT WINDOW COLS">
+            TEXT AREA
+ </textarea>
+</form>
+<form name="formmessage">
+  <input name="usermsg"  id="usermsg" 
+         type="text" size="160" onkeypress="javascript:clickPress(event);"/>
+  <a href="javascript:send()">Send</a>
+</form>
+</div>
+</body>
+<script>
+function clickPress(event){
+    if(event.keyCode === 13){
+        event.preventDefault();
+        send();
+    }
+    console.log('clickPress ' + event.keyCode);
+
+}
+function send()
+{
+    var name =  document.getElementById('usermsg').value;
+    ws.send(name);
+    console.log('Message sent:' + name);
+}
+
+function open()
+{
+    if (!("WebSocket" in window)) {
+        alert("This browser does not support WebSockets");
+        return;
+    };
+    var keyValues = window.location.search;
+    var urlParams = new URLSearchParams(keyValues);
+    userparam = urlParams.get('crypteduser');
+    ws = new WebSocket("ws://HOST PORT/chat_room?crypteduser=" + userparam);
+    ws.onopen = function() {
+        console.log('Connected');
+    };
+    ws.onmessage = function (evt)
+    {
+        var received_msg = evt.data;
+        var area = document.getElementById('chatarea');
+        area.value += "\n" + received_msg;// it works but stops
+        return
+    };
+    ws.onclose = function()
+    {
+        console.log('Connection closed');
+    };
+}
+</script>
+</html>
