@@ -32,7 +32,7 @@ init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_websocket}.
 
 init(<<"GET">>, <<"/">>, Body, Req, State) ->
-    enter_home_page(enter, Body, Req, State);
+    home_page(enter, Body, Req, State);
 init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) or
                                                        (Method =:= <<"GET">>)) ->
     case get_body(<<"textusername">>, Body) of
@@ -43,7 +43,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             case chat_room_server:get_connected_user(CryptedUserName) of
                 false ->
                     %% Re-enter User name.
-                    enter_home_page(does_not_exist, Body, Req, State);
+                    home_page(does_not_exist, Body, Req, State);
                 {UserName, CryptedUserName} ->
                     chat_room(Method, UserName, Body, Req, State)
             end;
@@ -61,7 +61,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
                     %% we get here from home page.
                     %% lets chack again.
                     case chat_room_server:connect_user({Value, CryptedUserName}) of
-                        already_exists -> enter_home_page(already_exists, Body, Req, State);
+                        already_exists -> home_page(already_exists, Body, Req, State);
                         ok -> chat_room(Method, Value, Body, Req, State)
                     end
             end
@@ -110,7 +110,7 @@ terminate(Reason, _Req, State) ->
        true -> ok
     end.
 
-enter_home_page(Flag, Body, Req, State) ->
+home_page(Flag, Body, Req, State) ->
     {HTTPResponse, WelcomeText} =
         case Flag of
             enter -> {200, "Welcome. Please enter your name."};
