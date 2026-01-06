@@ -20,9 +20,9 @@
   //enctypt user name in URL
   function updateValue(){
       var name =  document.getElementById('textusername').value;
-      var random = Math.random().toString().substr(2, 8);
-      encrypted_name = window.btoa(name);
-      var path = "/chat_room?crypteduser=" + encrypted_name + random;
+      // var random = Math.random().toString().substr(2, 8);
+      // encrypted_name = window.btoa(name);
+      var path = "/chat_room?username=" + name;
       document.formusername.action = path;
       document.forms["formusername"].submit();
       return false;

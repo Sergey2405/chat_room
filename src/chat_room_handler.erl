@@ -13,8 +13,10 @@ init( Req, State ) ->
     {_, Body, _} = cowboy_req:read_body(Req),
     case cowboy_req:header(<<"upgrade">>,Req) of
         <<"websocket">> ->
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case CryptedUserName of
+            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
+            UserName = parse_qs(<<"user">>, Req),
+            % case CryptedUserName of
+            case UserName of
                 undefined ->
                     logger:debug("Is trying to save pid to unknown User. Reload page"),
                     init(cowboy_req:method(Req), cowboy_req:path(Req), Body, Req, State);
@@ -39,31 +41,52 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
         undefined ->
             %% js request absent.
             %% a user has already entered the room before.
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case chat_room_server:get_connected_user(CryptedUserName) of
+            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
+            UserName = parse_qs(<<"username">>, Req),  % TODO: username
+            % case chat_room_server:get_connected_user(CryptedUserName) of
+            case chat_room_server:get_connected_user(UserName) of
                 false ->
                     %% Re-enter User name.
                     home_page(does_not_exist, Body, Req, State);
-                {UserName, CryptedUserName} ->
+                % {UserName, CryptedUserName} ->
+                UserName ->
                     chat_room(Method, UserName, Body, Req, State)
             end;
         Value ->
             %% js request when a user is entering the room.
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case chat_room_server:get_connected_user(CryptedUserName) of
-                {Value, CryptedUserName} ->
-                    %% already exists.
-                    %% but we get here from chat_room_page since it might not been reloaded!
-                    %% GET method is forcible set.
-                    chat_room(<<"GET">>, Value, Body, Req, State);
-                  _ ->
+            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
+            UserName = parse_qs(<<"username">>, Req),
+            % case chat_room_server:get_connected_user(CryptedUserName) of
+            case chat_room_server:get_connected_user(UserName) of
+                % {Value, CryptedUserName} ->
+                % UserName ->
+                %     %% already exists.
+                %     %% but we get here from chat_room_page since it might not been reloaded!
+                %     %% GET method is forcible set.
+                %     chat_room(<<"GET">>, Value, Body, Req, State);
+                %   _ ->
+                %     %% normal case.
+                %     %% we get here from home page.
+                %     %% lets chack again.
+                %     % case chat_room_server:connect_user({Value, CryptedUserName}) of
+                %     case chat_room_server:connect_user({Value, UserName}) of
+                %         already_exists -> home_page(already_exists, Body, Req, State);
+                %         ok -> chat_room(Method, Value, Body, Req, State)
+                %     end
+                  false ->
                     %% normal case.
                     %% we get here from home page.
                     %% lets chack again.
-                    case chat_room_server:connect_user({Value, CryptedUserName}) of
+                    % case chat_room_server:connect_user({Value, CryptedUserName}) of
+                    case chat_room_server:connect_user({Value, UserName}) of
                         already_exists -> home_page(already_exists, Body, Req, State);
                         ok -> chat_room(Method, Value, Body, Req, State)
-                    end
+                    end;
+                UserName ->
+                    %% already exists.
+                    %% but we get here from chat_room_page since it might not been reloaded!
+                    %% GET method is forcible set.
+                    chat_room(<<"GET">>, Value, Body, Req, State)
             end
     end;
 init(_Method, _Path, _Body, Req, State) ->
@@ -104,20 +127,20 @@ websocket_info(_Info, Req, State) ->
 websocket_terminate(_Reason, _Req, _State) ->
     ok.
 
-terminate(Reason, _Req, State) ->
+terminate(Reason, _Req, _State) ->
     logger:debug("terminate with Reason: ~p",[Reason]),
     if Reason == timeout -> chat_room_server:delete_pid();
        true -> ok
     end.
 
-home_page(Flag, Body, Req, State) ->
+home_page(Flag, _Body, Req, State) ->
     {HTTPResponse, WelcomeText} =
         case Flag of
             enter -> {200, "Welcome. Please enter your name."};
             already_exists -> {401, "Please enter under another user since he has already connected."};
             does_not_exist -> {401, "Please enter user name again since you have tried to send a message under not connected user."}
         end,
-    Host = binary:bin_to_list(cowboy_req:host(Req)),
+    % Host = binary:bin_to_list(cowboy_req:host(Req)),
 
     RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->

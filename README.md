@@ -18,7 +18,7 @@ Description
 The application is written on erlang, based on web server used cowboy library.
 It is a chat with two main pages:
 - <server_ip>:<port_num>
-- <server_ip>:<port_num>/chat_room?crypteduser=...
+- <server_ip>:<port_num>/chat_room?username=...
 Where server_ip - server IP,
 port_num - number of port, 8080 by default.
 
