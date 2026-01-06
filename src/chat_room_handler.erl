@@ -14,7 +14,7 @@ init( Req, State ) ->
     case cowboy_req:header(<<"upgrade">>,Req) of
         <<"websocket">> ->
             % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            UserName = parse_qs(<<"user">>, Req),
+            UserName = parse_qs(<<"username">>, Req),
             % case CryptedUserName of
             case UserName of
                 undefined ->
@@ -57,9 +57,8 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
             UserName = parse_qs(<<"username">>, Req),
             % case chat_room_server:get_connected_user(CryptedUserName) of
-            case chat_room_server:get_connected_user(UserName) of
+            case chat_room_server:get_connected_user(UserName) of   %% TODO: boolean()
                 % {Value, CryptedUserName} ->
-                % UserName ->
                 %     %% already exists.
                 %     %% but we get here from chat_room_page since it might not been reloaded!
                 %     %% GET method is forcible set.
@@ -67,18 +66,19 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
                 %   _ ->
                 %     %% normal case.
                 %     %% we get here from home page.
-                %     %% lets chack again.
+                %     %% lets check again.
                 %     % case chat_room_server:connect_user({Value, CryptedUserName}) of
                 %     case chat_room_server:connect_user({Value, UserName}) of
                 %         already_exists -> home_page(already_exists, Body, Req, State);
                 %         ok -> chat_room(Method, Value, Body, Req, State)
                 %     end
-                  false ->
+                false ->
                     %% normal case.
                     %% we get here from home page.
                     %% lets chack again.
                     % case chat_room_server:connect_user({Value, CryptedUserName}) of
-                    case chat_room_server:connect_user({Value, UserName}) of
+                    % case chat_room_server:connect_user({Value, UserName}) of
+                    case chat_room_server:connect_user(UserName) of
                         already_exists -> home_page(already_exists, Body, Req, State);
                         ok -> chat_room(Method, Value, Body, Req, State)
                     end;
