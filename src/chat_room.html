@@ -45,7 +45,6 @@ function open()
     };
     var keyValues = window.location.search;
     var urlParams = new URLSearchParams(keyValues);
-    // userparam = urlParams.get('crypteduser');
     userparam = urlParams.get('username');
     ws = new WebSocket("ws://HOST PORT/chat_room?username=" + userparam);
     ws.onopen = function() {

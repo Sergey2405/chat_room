@@ -13,7 +13,7 @@
          terminate/2]).
 -export([connect_user/1,
          save_pid/1,
-        get_connected_user/1,
+         get_connected_user/1,
          get_messages/0,
          send_message/1,
          send_message_to_everyone/1,
@@ -23,7 +23,6 @@
 -include("chat_room.hrl").
 
 -record(state, {messages = [] :: [{string(), string()}],
-                % connected_users = [] :: [{string(), string()}],
                 connected_users = [] :: [string()],
                 websockets = [] :: [{pid(), string()}] }).
 
@@ -44,24 +43,15 @@ init([]) ->
     end,
     {ok, #state{}}.
 
-% handle_call({connect_user, {UserName, CryptedUserName} = User}, _From, State) ->
 handle_call({connect_user, UserName}, _From, State) ->
     Users = State#state.connected_users,
-    % case {lists:keyfind(UserName, 1, Users),
-    %       lists:keyfind(CryptedUserName, 2, Users)} of
-    %      {false, false} ->
-    %             {reply, ok, State#state{connected_users = [User|State#state.connected_users]}};
-    %       _ -> {reply, already_exists, State}
-    % end;
     case lists:member(UserName, Users) of
          false ->
             {reply, ok, State#state{connected_users = [UserName|State#state.connected_users]}};
             _ -> {reply, already_exists, State}
     end;
-% handle_call({get_connected_user, CryptedUserName}, _From, State) ->
 handle_call({get_connected_user, UserName}, _From, State) ->    %% TODO: is needed?
     Users = State#state.connected_users,
-    % TokenUser = lists:keyfind(CryptedUserName, 2, Users),
     TokenUser = case lists:member(UserName, Users) of
                     true -> UserName;
                     false -> false
@@ -73,16 +63,6 @@ handle_call({save_pid,{Pid, UserName}}, _From, State) ->
     %% One user might have several connections.
     Websockets = State#state.websockets,
     Users = State#state.connected_users,
-    % case {lists:keyfind(UserName, 1, Users),
-    %       lists:keyfind(UserName, 2, Users),
-    %       lists:keyfind(Pid, 1, Websockets)} of
-    %     {false, false, false} -> {reply, unknown_user, State};
-    %     {_, _, Websocket} when Websocket =/= false -> {reply, pid_is_used, State};
-    %     {false, {NameValue, _CryptedValue}, false} ->
-    %         {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}};
-    %     {{NameValue, _CryptedValue}, false, false} ->
-    %         {reply, ok, State#state{websockets = [{Pid, NameValue}|Websockets]}}
-    % end;
     case {lists:member(UserName, Users),
           lists:keyfind(Pid, 1, Websockets)} of
         {false, false} -> {reply, unknown_user, State};
@@ -116,7 +96,6 @@ handle_call({delete_pid, Pid}, _From, State) ->
                         %% no more connection for the user exists.
                         %% delete him.
                         gen_server:cast(?MODULE, {send_message_to_everyone, {TokenUserName, exited}}),
-                        % [Elem || Elem = {UserName, _CryptedUserName} <- Users, UserName =/= TokenUserName];
                         [UserName || UserName <- Users, UserName =/= TokenUserName];
                     {_TokenPid, TokenUserName} ->
                         %% one more connection for the user.
@@ -187,8 +166,6 @@ do_send_message_to_everyone({PidOrUserName, Message}, State) ->
                                                              ?CHAT_ROOM_NUMBER_OF_KEPT_MESSAGES)),
                 websockets = NewWebsockets}.
 
-
-% connect_user({_UserName, CryptedUserName} = User) ->
 connect_user(UserName) ->
     gen_server:call(?MODULE, {connect_user, UserName}).
 
@@ -199,8 +176,6 @@ save_pid(UserName) when is_list(UserName) ->
 save_pid({Pid, UserName}) when is_pid(Pid) ->
     gen_server:call(?MODULE, {save_pid,{Pid, UserName}}).
 
-% get_connected_user(CryptedUserName) ->
-%     gen_server:call(?MODULE, {get_connected_user, CryptedUserName}).
 get_connected_user(UserName) ->
     gen_server:call(?MODULE, {get_connected_user, UserName}).
 

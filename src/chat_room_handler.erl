@@ -1,4 +1,4 @@
--module(chat_room_handler).
+-module(chat_room_handler). %%  TODO: rename
 -behaviour(cowboy_websocket).
 
 -export([init/2, init/3, handle/2, terminate/3]).
@@ -13,9 +13,7 @@ init( Req, State ) ->
     {_, Body, _} = cowboy_req:read_body(Req),
     case cowboy_req:header(<<"upgrade">>,Req) of
         <<"websocket">> ->
-            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
             UserName = parse_qs(<<"username">>, Req),
-            % case CryptedUserName of
             case UserName of
                 undefined ->
                     logger:debug("Is trying to save pid to unknown User. Reload page"),
@@ -41,44 +39,23 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
         undefined ->
             %% js request absent.
             %% a user has already entered the room before.
-            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            UserName = parse_qs(<<"username">>, Req),  % TODO: username
-            % case chat_room_server:get_connected_user(CryptedUserName) of
+            UserName = parse_qs(<<"username">>, Req),
             case chat_room_server:get_connected_user(UserName) of
                 false ->
                     %% Re-enter User name.
                     home_page(does_not_exist, Body, Req, State);
-                % {UserName, CryptedUserName} ->
                 UserName ->
                     chat_room(Method, UserName, Body, Req, State)
             end;
         Value ->
             %% js request when a user is entering the room.
-            % CryptedUserName = parse_qs(<<"crypteduser">>, Req),
             UserName = parse_qs(<<"username">>, Req),
-            % case chat_room_server:get_connected_user(CryptedUserName) of
             case chat_room_server:get_connected_user(UserName) of   %% TODO: boolean()
-                % {Value, CryptedUserName} ->
-                %     %% already exists.
-                %     %% but we get here from chat_room_page since it might not been reloaded!
-                %     %% GET method is forcible set.
-                %     chat_room(<<"GET">>, Value, Body, Req, State);
-                %   _ ->
-                %     %% normal case.
-                %     %% we get here from home page.
-                %     %% lets check again.
-                %     % case chat_room_server:connect_user({Value, CryptedUserName}) of
-                %     case chat_room_server:connect_user({Value, UserName}) of
-                %         already_exists -> home_page(already_exists, Body, Req, State);
-                %         ok -> chat_room(Method, Value, Body, Req, State)
-                %     end
                 false ->
                     %% normal case.
                     %% we get here from home page.
-                    %% lets chack again.
-                    % case chat_room_server:connect_user({Value, CryptedUserName}) of
-                    % case chat_room_server:connect_user({Value, UserName}) of
-                    case chat_room_server:connect_user(UserName) of
+                    %% lets check again.
+                    case chat_room_server:connect_user(UserName) of % TODO: rename
                         already_exists -> home_page(already_exists, Body, Req, State);
                         ok -> chat_room(Method, Value, Body, Req, State)
                     end;
@@ -140,8 +117,6 @@ home_page(Flag, _Body, Req, State) ->
             already_exists -> {401, "Please enter under another user since he has already connected."};
             does_not_exist -> {401, "Please enter user name again since you have tried to send a message under not connected user."}
         end,
-    % Host = binary:bin_to_list(cowboy_req:host(Req)),
-
     RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->
                     BinaryConenent;
@@ -149,7 +124,6 @@ home_page(Flag, _Body, Req, State) ->
                     Reason
                end,
     Html = re:replace(RawHtml, "WELCOME TEXT", WelcomeText),
-
     NewReq = cowboy_req:reply(HTTPResponse,#{}, Html, Req),
     {ok, NewReq, State}.
 
