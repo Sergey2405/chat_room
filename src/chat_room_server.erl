@@ -46,9 +46,8 @@ init([]) ->
 handle_call({connect_user, UserName}, _From, State) ->
     Users = State#state.connected_users,
     case lists:member(UserName, Users) of
-         false ->
-            {reply, ok, State#state{connected_users = [UserName|State#state.connected_users]}};
-            _ -> {reply, already_exists, State}
+        false -> {reply, ok, State#state{connected_users = [UserName|State#state.connected_users]}};
+        true ->  {reply, already_exists, State}
     end;
 handle_call({get_connected_user, UserName}, _From, State) ->    %% TODO: is needed?
     Users = State#state.connected_users,

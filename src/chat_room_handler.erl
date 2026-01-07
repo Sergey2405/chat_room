@@ -9,7 +9,7 @@
 
 -include("chat_room.hrl").
 
-init( Req, State ) ->
+init(Req, State) ->
     {_, Body, _} = cowboy_req:read_body(Req),
     case cowboy_req:header(<<"upgrade">>,Req) of
         <<"websocket">> ->
@@ -62,8 +62,8 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
                 UserName ->
                     %% already exists.
                     %% but we get here from chat_room_page since it might not been reloaded!
-                    %% GET method is forcible set.
-                    chat_room(<<"GET">>, Value, Body, Req, State)
+                    %% GET method is forcibly set.
+                    home_page(already_exists, Body, Req, State)
             end
     end;
 init(_Method, _Path, _Body, Req, State) ->
