@@ -55,14 +55,9 @@ handle_call({save_pid,{Pid, UserName}}, _From, State) ->
     %% Pid is key,
     %% Username is value.
     %% One user might have several connections.
-    Websockets = State#state.websockets,
-    Users = State#state.connected_users,
-    case {lists:member(UserName, Users),
-          lists:keyfind(Pid, 1, Websockets)} of
-        {false, false} -> {reply, unknown_user, State};
-        {_, Websocket} when Websocket =/= false -> {reply, pid_is_used, State};
-        {true, false} ->
-            {reply, ok, State#state{websockets = [{Pid, UserName}|Websockets]}}
+    case lists:member(UserName, State#state.connected_users) of
+        false -> {reply, unknown_user, State};
+        true  -> {reply, ok, State#state{websockets = [{Pid, UserName}|State#state.websockets]}}
     end;
 handle_call(get_messages, _From, State) ->
     {reply, State#state.messages, State};
