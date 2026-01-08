@@ -13,11 +13,11 @@
          terminate/2]).
 -export([connect_user/1,
          save_pid/1,
+         delete_pid/0, delete_pid/1,
          is_user_connected/1,
          get_messages/0,
          send_message/1,
-         send_message_to_everyone/1,
-         delete_pid/0, delete_pid/1]).
+         send_message_to_everyone/1]).
 -export([start_trickster_bot/3]).
 
 -include("chat_room.hrl").
@@ -165,6 +165,12 @@ save_pid(UserName) when is_list(UserName) ->
 save_pid({Pid, UserName}) when is_pid(Pid) ->
     gen_server:call(?MODULE, {save_pid,{Pid, UserName}}).
 
+delete_pid() ->
+    delete_pid(self()).
+
+delete_pid(Pid) ->
+    gen_server:call(?MODULE, {delete_pid, Pid}).
+
 is_user_connected(UserName) ->
     gen_server:call(?MODULE, {is_user_connected, UserName}).
 
@@ -201,13 +207,6 @@ send_message_to_everyone({PidOrUserName, Message}) when (is_list(PidOrUserName) 
                                                          (is_list(Message) or
                                                           is_atom(Message)) ->
     gen_server:call(?MODULE, {send_message_to_everyone, {PidOrUserName, Message}}).
-
-delete_pid() ->
-    delete_pid(self()).
-
-delete_pid(Pid) ->
-    gen_server:call(?MODULE, {delete_pid, Pid}).
-
 
 start_trickster_bot(Interval, UserName, RandomMessages) ->
     loop_trickster_bot(Interval, UserName, RandomMessages).
