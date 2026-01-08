@@ -32,7 +32,7 @@ init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_websocket}.
 
 init(<<"GET">>, <<"/">>, Body, Req, State) ->
-    home_page(enter, Body, Req, State);
+    home_page(Req, State);
 init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) or
                                                        (Method =:= <<"GET">>)) ->
     case get_body(<<"textusername">>, Body) of
@@ -40,13 +40,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             %% js request absent.
             %% a user has already entered the room before.
             UserName = parse_qs(<<"username">>, Req),
-            case chat_room_server:is_user_connected(UserName) of
-                false ->
-                    %% Re-enter User name.
-                    home_page(does_not_exist, Body, Req, State);
-                true ->
-                    chat_room(Method, UserName, Body, Req, State)
-            end;
+            chat_room(Method, UserName, Body, Req, State);
         Value ->
             %% js request when a user is entering the room.
             UserName = parse_qs(<<"username">>, Req),
@@ -99,13 +93,8 @@ terminate(Reason, _Req, _State) ->
         _ -> ok
     end.
 
-home_page(Flag, _Body, Req, State) ->
-    {HTTPResponse, WelcomeText} =
-        case Flag of
-            enter -> {200, "Welcome. Please enter your name."};
-            already_exists -> {401, "Please enter under another user since he has already connected."};
-            does_not_exist -> {401, "Please enter user name again since you have tried to send a message under not connected user."}
-        end,
+home_page(Req, State) ->
+    {HTTPResponse, WelcomeText} = {200, "Welcome. Please enter your name."},
     RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->
                     BinaryConenent;
