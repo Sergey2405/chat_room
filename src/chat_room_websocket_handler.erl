@@ -1,4 +1,4 @@
--module(chat_room_websocket_handler). %%  TODO: rename
+-module(chat_room_websocket_handler).
 -behaviour(cowboy_websocket).
 
 -export([init/2, init/3, handle/2, terminate/3]).
