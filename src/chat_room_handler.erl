@@ -106,8 +106,10 @@ websocket_terminate(_Reason, _Req, _State) ->
 
 terminate(Reason, _Req, _State) ->
     logger:debug("terminate with Reason: ~p",[Reason]),
-    if Reason == timeout -> chat_room_server:delete_pid();
-       true -> ok
+    case Reason of
+        timeout -> chat_room_server:delete_pid();
+        {remote, _, _} -> chat_room_server:delete_pid();
+        _ -> ok
     end.
 
 home_page(Flag, _Body, Req, State) ->
