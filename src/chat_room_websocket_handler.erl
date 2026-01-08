@@ -32,20 +32,22 @@ init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_websocket}.
 
 init(<<"GET">>, <<"/">>, Body, Req, State) ->
-    home_page(Req, State);
+    home_page(welcome, Req, State);
 init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) or
                                                        (Method =:= <<"GET">>)) ->
+    UserName = parse_qs(<<"username">>, Req),
     case get_body(<<"textusername">>, Body) of
         undefined ->
             %% js request absent.
             %% a user has already entered the room before.
-            UserName = parse_qs(<<"username">>, Req),
-            chat_room(Method, UserName, Body, Req, State);
+            case chat_room_server:is_user_connected(UserName) of
+                true  -> chat_room(Method, UserName, Body, Req, State);
+                false -> home_page(please_register, Req, State)
+            end;
         Value ->
             %% js request when a user is entering the room.
-            UserName = parse_qs(<<"username">>, Req),
             chat_room_server:connect_user(UserName),
-            chat_room(Method, Value, Body, Req, State)   
+            chat_room(Method, Value, Body, Req, State)
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -93,8 +95,12 @@ terminate(Reason, _Req, _State) ->
         _ -> ok
     end.
 
-home_page(Req, State) ->
-    {HTTPResponse, WelcomeText} = {200, "Welcome. Please enter your name."},
+home_page(welcome, Req, State) ->
+    home_page({200, "Welcome. Please enter your name."}, Req, State);
+home_page(please_register, Req, State) ->
+    home_page({401, "Please enter user name again since you have tried to send a message under not connected user."},
+              Req, State);
+home_page({HTTPResponse, WelcomeText}, Req, State) ->
     RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->
                     BinaryConenent;
