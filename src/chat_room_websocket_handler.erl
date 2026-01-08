@@ -40,7 +40,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             %% js request absent.
             %% a user has already entered the room before.
             UserName = parse_qs(<<"username">>, Req),
-            case chat_room_server:get_connected_user(UserName) of
+            case chat_room_server:is_user_connected(UserName) of
                 false ->
                     %% Re-enter User name.
                     home_page(does_not_exist, Body, Req, State);
@@ -50,7 +50,12 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
         Value ->
             %% js request when a user is entering the room.
             UserName = parse_qs(<<"username">>, Req),
-            case chat_room_server:get_connected_user(UserName) of   %% TODO: boolean()
+            case chat_room_server:is_user_connected(UserName) of
+                true ->
+                    %% already exists.
+                    %% but we get here from chat_room_page since it might not been reloaded!
+                    %% GET method is forcibly set.
+                    home_page(already_exists, Body, Req, State);
                 false ->
                     %% normal case.
                     %% we get here from home page.
@@ -58,12 +63,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
                     case chat_room_server:connect_user(UserName) of % TODO: rename
                         already_exists -> home_page(already_exists, Body, Req, State);
                         ok -> chat_room(Method, Value, Body, Req, State)
-                    end;
-                UserName ->
-                    %% already exists.
-                    %% but we get here from chat_room_page since it might not been reloaded!
-                    %% GET method is forcibly set.
-                    home_page(already_exists, Body, Req, State)
+                    end
             end
     end;
 init(_Method, _Path, _Body, Req, State) ->

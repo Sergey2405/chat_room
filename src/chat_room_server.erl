@@ -13,7 +13,7 @@
          terminate/2]).
 -export([connect_user/1,
          save_pid/1,
-         get_connected_user/1,
+         is_user_connected/1,
          get_messages/0,
          send_message/1,
          send_message_to_everyone/1,
@@ -49,13 +49,8 @@ handle_call({connect_user, UserName}, _From, State) ->
         false -> {reply, ok, State#state{connected_users = [UserName|State#state.connected_users]}};
         true ->  {reply, already_exists, State}
     end;
-handle_call({get_connected_user, UserName}, _From, State) ->    %% TODO: is needed?
-    Users = State#state.connected_users,
-    TokenUser = case lists:member(UserName, Users) of
-                    true -> UserName;
-                    false -> false
-                end,
-    {reply, TokenUser, State};
+handle_call({is_user_connected, UserName}, _From, State) ->
+    {reply, lists:member(UserName, State#state.connected_users), State};
 handle_call({save_pid,{Pid, UserName}}, _From, State) ->
     %% Pid is key,
     %% Username is value.
@@ -175,8 +170,8 @@ save_pid(UserName) when is_list(UserName) ->
 save_pid({Pid, UserName}) when is_pid(Pid) ->
     gen_server:call(?MODULE, {save_pid,{Pid, UserName}}).
 
-get_connected_user(UserName) ->
-    gen_server:call(?MODULE, {get_connected_user, UserName}).
+is_user_connected(UserName) ->
+    gen_server:call(?MODULE, {is_user_connected, UserName}).
 
 get_messages() ->
     Messages = gen_server:call(?MODULE, get_messages),
