@@ -138,7 +138,7 @@ do_send_message_to_everyone({PidOrUserName, Message}, State) ->
        end,
     TextMessage =
         case Message of
-            entered -> TextUserName ++ " entrered.";
+            entered -> TextUserName ++ " entered.";
             exited -> TextUserName ++ " exited.";
             _Value -> TextUserName ++ ": " ++ Message
         end,
@@ -224,9 +224,6 @@ loop_trickster_bot(Interval, UserName, RandomMessages) ->
     receive send_another_message->
         loop_trickster_bot(Interval, UserName, RandomMessages)
     end.
-
-% fetch_random_message() ->
-%     fetch_random_message(?TRICKSTER_RANDOM_MESSAGES).
 
 fetch_random_message(Messages) ->
     [Message] = lists:sublist(Messages, rand:uniform(length(Messages)), 1),

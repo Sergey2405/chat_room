@@ -44,27 +44,14 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
                 false ->
                     %% Re-enter User name.
                     home_page(does_not_exist, Body, Req, State);
-                UserName ->
+                true ->
                     chat_room(Method, UserName, Body, Req, State)
             end;
         Value ->
             %% js request when a user is entering the room.
             UserName = parse_qs(<<"username">>, Req),
-            case chat_room_server:is_user_connected(UserName) of
-                true ->
-                    %% already exists.
-                    %% but we get here from chat_room_page since it might not been reloaded!
-                    %% GET method is forcibly set.
-                    home_page(already_exists, Body, Req, State);
-                false ->
-                    %% normal case.
-                    %% we get here from home page.
-                    %% lets check again.
-                    case chat_room_server:connect_user(UserName) of % TODO: rename
-                        already_exists -> home_page(already_exists, Body, Req, State);
-                        ok -> chat_room(Method, Value, Body, Req, State)
-                    end
-            end
+            chat_room_server:connect_user(UserName),
+            chat_room(Method, Value, Body, Req, State)   
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -138,7 +125,6 @@ chat_room(Method, TextUserName, Body, Req, State) ->
         end,
     case Method of
         <<"POST">> ->
-            % chat_room_server:send_message({TextUserName, Message}),
             chat_room_server:send_message_to_everyone({TextUserName, Message});
         <<"GET">> -> ok
     end,
