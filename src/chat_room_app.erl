@@ -7,8 +7,8 @@
 start(_StartType, _StartArgs) ->
     Dispatch = cowboy_router:compile([
       {'_', [
-        {"/chat_room", chat_room_handler, []},
-        {"/", chat_room_handler, []}
+        {"/chat_room", chat_room_websocket_handler, []},
+        {"/", chat_room_websocket_handler, []}
        ]}
     ]),
 

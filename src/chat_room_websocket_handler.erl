@@ -1,4 +1,4 @@
--module(chat_room_handler).
+-module(chat_room_websocket_handler).
 -behaviour(cowboy_websocket).
 
 -export([init/2, init/3, handle/2, terminate/3]).
@@ -9,12 +9,12 @@
 
 -include("chat_room.hrl").
 
-init( Req, State ) ->
+init(Req, State) ->
     {_, Body, _} = cowboy_req:read_body(Req),
     case cowboy_req:header(<<"upgrade">>,Req) of
         <<"websocket">> ->
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case CryptedUserName of
+            UserName = parse_qs(<<"username">>, Req),
+            case UserName of
                 undefined ->
                     logger:debug("Is trying to save pid to unknown User. Reload page"),
                     init(cowboy_req:method(Req), cowboy_req:path(Req), Body, Req, State);
@@ -32,39 +32,22 @@ init({tcp, http}, _Req, _Opts) ->
     {upgrade, protocol, cowboy_websocket}.
 
 init(<<"GET">>, <<"/">>, Body, Req, State) ->
-    home_page(enter, Body, Req, State);
+    home_page(welcome, Req, State);
 init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) or
                                                        (Method =:= <<"GET">>)) ->
+    UserName = parse_qs(<<"username">>, Req),
     case get_body(<<"textusername">>, Body) of
         undefined ->
             %% js request absent.
             %% a user has already entered the room before.
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case chat_room_server:get_connected_user(CryptedUserName) of
-                false ->
-                    %% Re-enter User name.
-                    home_page(does_not_exist, Body, Req, State);
-                {UserName, CryptedUserName} ->
-                    chat_room(Method, UserName, Body, Req, State)
+            case chat_room_server:is_user_connected(UserName) of
+                true  -> chat_room_page(Method, UserName, Body, Req, State);
+                false -> home_page(please_register, Req, State)
             end;
         Value ->
             %% js request when a user is entering the room.
-            CryptedUserName = parse_qs(<<"crypteduser">>, Req),
-            case chat_room_server:get_connected_user(CryptedUserName) of
-                {Value, CryptedUserName} ->
-                    %% already exists.
-                    %% but we get here from chat_room_page since it might not been reloaded!
-                    %% GET method is forcible set.
-                    chat_room(<<"GET">>, Value, Body, Req, State);
-                  _ ->
-                    %% normal case.
-                    %% we get here from home page.
-                    %% lets chack again.
-                    case chat_room_server:connect_user({Value, CryptedUserName}) of
-                        already_exists -> home_page(already_exists, Body, Req, State);
-                        ok -> chat_room(Method, Value, Body, Req, State)
-                    end
-            end
+            chat_room_server:connect_user(UserName),
+            chat_room_page(Method, Value, Body, Req, State)
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -104,21 +87,20 @@ websocket_info(_Info, Req, State) ->
 websocket_terminate(_Reason, _Req, _State) ->
     ok.
 
-terminate(Reason, _Req, State) ->
+terminate(Reason, _Req, _State) ->
     logger:debug("terminate with Reason: ~p",[Reason]),
-    if Reason == timeout -> chat_room_server:delete_pid();
-       true -> ok
+    case Reason of
+        timeout -> chat_room_server:delete_pid();
+        {remote, _, _} -> chat_room_server:delete_pid();
+        _ -> ok
     end.
 
-home_page(Flag, Body, Req, State) ->
-    {HTTPResponse, WelcomeText} =
-        case Flag of
-            enter -> {200, "Welcome. Please enter your name."};
-            already_exists -> {401, "Please enter under another user since he has already connected."};
-            does_not_exist -> {401, "Please enter user name again since you have tried to send a message under not connected user."}
-        end,
-    Host = binary:bin_to_list(cowboy_req:host(Req)),
-
+home_page(welcome, Req, State) ->
+    home_page({200, "Welcome. Please enter your name."}, Req, State);
+home_page(please_register, Req, State) ->
+    home_page({401, "Please enter user name again since you have tried to send a message under not connected user."},
+              Req, State);
+home_page({HTTPResponse, WelcomeText}, Req, State) ->
     RawHtml =  case file:read_file("src/home.html") of
                 {ok, BinaryConenent} ->
                     BinaryConenent;
@@ -126,12 +108,11 @@ home_page(Flag, Body, Req, State) ->
                     Reason
                end,
     Html = re:replace(RawHtml, "WELCOME TEXT", WelcomeText),
-
     NewReq = cowboy_req:reply(HTTPResponse,#{}, Html, Req),
     {ok, NewReq, State}.
 
 % chatroom post message.
-chat_room(Method, TextUserName, Body, Req, State) ->
+chat_room_page(Method, TextUserName, Body, Req, State) ->
     Message =
         case get_body(<<"usermsg">>, Body) of
             undefined -> entered;
@@ -139,7 +120,6 @@ chat_room(Method, TextUserName, Body, Req, State) ->
         end,
     case Method of
         <<"POST">> ->
-            % chat_room_server:send_message({TextUserName, Message}),
             chat_room_server:send_message_to_everyone({TextUserName, Message});
         <<"GET">> -> ok
     end,
