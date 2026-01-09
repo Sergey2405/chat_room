@@ -41,13 +41,13 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             %% js request absent.
             %% a user has already entered the room before.
             case chat_room_server:is_user_connected(UserName) of
-                true  -> chat_room(Method, UserName, Body, Req, State);
+                true  -> chat_room_page(Method, UserName, Body, Req, State);
                 false -> home_page(please_register, Req, State)
             end;
         Value ->
             %% js request when a user is entering the room.
             chat_room_server:connect_user(UserName),
-            chat_room(Method, Value, Body, Req, State)
+            chat_room_page(Method, Value, Body, Req, State)
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -112,7 +112,7 @@ home_page({HTTPResponse, WelcomeText}, Req, State) ->
     {ok, NewReq, State}.
 
 % chatroom post message.
-chat_room(Method, TextUserName, Body, Req, State) ->
+chat_room_page(Method, TextUserName, Body, Req, State) ->
     Message =
         case get_body(<<"usermsg">>, Body) of
             undefined -> entered;
