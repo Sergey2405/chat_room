@@ -39,15 +39,29 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
     case get_body(<<"textusername">>, Body) of
         undefined ->
             %% js request absent.
-            %% a user has already entered the room before.
-            case chat_room_server:is_user_connected(UserName) of
-                true  -> chat_room_page(Method, UserName, Body, Req, State);
-                false -> home_page(please_register, Req, State)
-            end;
-        Value ->
+            %% a user has already entered the room before or simply (re-)enters the page
+            home_page(please_register, Req, State);
+        TextUserNameValue ->
+            io:format("textusername ~p~n", [TextUserNameValue]),
             %% js request when a user is entering the room.
-            chat_room_server:connect_user(UserName),
-            chat_room_page(Method, Value, Body, Req, State)
+            case parse_header(<<"referer">>, Req) of
+                undefined ->
+                    io:format("referer NONE~n"),
+                    nok;
+                RefererValue ->
+                    io:format("referer ~p~n", [RefererValue]),
+                    case re:run(binary:list_to_bin(RefererValue), <<".*/$">>) of
+                        {match, Capture} ->
+                            io:format("referer match ~p~n", [Capture]),
+                            chat_room_server:connect_user(TextUserNameValue),
+                            chat_room_page(Method, TextUserNameValue, Body, Req, State);
+                        nomatch ->
+                            io:format("referer re:run nomatch~n"),
+                            home_page(please_register, Req, State)
+                    end
+            end
+            % chat_room_server:connect_user(UserName),
+            % chat_room_page(Method, Value, Body, Req, State)
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -90,6 +104,7 @@ websocket_terminate(_Reason, _Req, _State) ->
 terminate(Reason, _Req, _State) ->
     logger:debug("terminate with Reason: ~p",[Reason]),
     case Reason of
+        normal -> chat_room_server:delete_pid();
         timeout -> chat_room_server:delete_pid();
         {remote, _, _} -> chat_room_server:delete_pid();
         _ -> ok
@@ -142,7 +157,9 @@ chat_room_page(Method, TextUserName, Body, Req, State) ->
 
 get_body(Key, UriBody) ->
     try binary:bin_to_list(proplists:get_value(Key, uri_string:dissect_query(UriBody))) of
-        Value -> Value
+        Value -> 
+            io:format("get_body ~p",[Value]),
+            Value
     catch
         _:_ -> undefined
     end.
@@ -152,4 +169,19 @@ parse_qs(Key, Req) ->
         Value -> Value
     catch
         _:_ -> undefined
+    end.
+
+parse_header(Key, Req) ->
+    %% TODO get Req{headers =>}
+    % maps:get(Key, maps:get(headers, Req, undefined), undefined)
+    % try binary:bin_to_list(proplists:get_value(Key, cowboy_req:parse_header(Key, Req))) of
+    try binary:bin_to_list(maps:get(Key, maps:get(headers, Req, undefined), undefined)) of
+        Value ->
+            io:format("parse_header Value ~p~n", [Value]),
+            Value
+    catch
+        
+        _:_ ->
+            io:format("parse_header undefined~n"),
+            undefined
     end.
