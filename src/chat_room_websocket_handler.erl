@@ -38,7 +38,7 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
     UserName = parse_qs(<<"username">>, Req),
     case get_body(<<"textusername">>, Body) of
         undefined ->
-            %% js request absent.
+            %% js request absents.
             %% a user has already entered the room before or simply (re-)enters the page
             home_page(please_register, Req, State);
         TextUserNameValue ->
@@ -47,21 +47,20 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             case parse_header(<<"referer">>, Req) of
                 undefined ->
                     io:format("referer NONE~n"),
-                    nok;
+                    home_page(please_register, Req, State);
                 RefererValue ->
                     io:format("referer ~p~n", [RefererValue]),
                     case re:run(binary:list_to_bin(RefererValue), <<".*/$">>) of
                         {match, Capture} ->
                             io:format("referer match ~p~n", [Capture]),
                             chat_room_server:connect_user(TextUserNameValue),
+                            chat_room_server:save_pid({maps:get(pid, Req, self()), TextUserNameValue}),
                             chat_room_page(Method, TextUserNameValue, Body, Req, State);
                         nomatch ->
                             io:format("referer re:run nomatch~n"),
                             home_page(please_register, Req, State)
                     end
             end
-            % chat_room_server:connect_user(UserName),
-            % chat_room_page(Method, Value, Body, Req, State)
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
