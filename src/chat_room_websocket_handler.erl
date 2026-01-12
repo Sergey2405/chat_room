@@ -42,22 +42,17 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
             %% a user has already entered the room before or simply (re-)enters the page
             home_page(please_register, Req, State);
         TextUserNameValue ->
-            io:format("textusername ~p~n", [TextUserNameValue]),
             %% js request when a user is entering the room.
             case parse_header(<<"referer">>, Req) of
                 undefined ->
-                    io:format("referer NONE~n"),
                     home_page(please_register, Req, State);
                 RefererValue ->
-                    io:format("referer ~p~n", [RefererValue]),
                     case re:run(binary:list_to_bin(RefererValue), <<".*/$">>) of
                         {match, Capture} ->
-                            io:format("referer match ~p~n", [Capture]),
                             chat_room_server:connect_user(TextUserNameValue),
                             chat_room_server:save_pid({maps:get(pid, Req, self()), TextUserNameValue}),
                             chat_room_page(Method, TextUserNameValue, Body, Req, State);
                         nomatch ->
-                            io:format("referer re:run nomatch~n"),
                             home_page(please_register, Req, State)
                     end
             end
@@ -156,9 +151,7 @@ chat_room_page(Method, TextUserName, Body, Req, State) ->
 
 get_body(Key, UriBody) ->
     try binary:bin_to_list(proplists:get_value(Key, uri_string:dissect_query(UriBody))) of
-        Value -> 
-            io:format("get_body ~p",[Value]),
-            Value
+        Value -> Value
     catch
         _:_ -> undefined
     end.
@@ -171,16 +164,9 @@ parse_qs(Key, Req) ->
     end.
 
 parse_header(Key, Req) ->
-    %% TODO get Req{headers =>}
-    % maps:get(Key, maps:get(headers, Req, undefined), undefined)
-    % try binary:bin_to_list(proplists:get_value(Key, cowboy_req:parse_header(Key, Req))) of
+    %% cowboy_req:parse_header/2/3 with cowh_http_hd:parse_referer/1 do not exist yet.
     try binary:bin_to_list(maps:get(Key, maps:get(headers, Req, undefined), undefined)) of
-        Value ->
-            io:format("parse_header Value ~p~n", [Value]),
-            Value
+        Value -> Value
     catch
-        
-        _:_ ->
-            io:format("parse_header undefined~n"),
-            undefined
+        _:_ -> undefined
     end.
