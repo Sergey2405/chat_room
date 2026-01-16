@@ -38,16 +38,24 @@ init(Method, <<"/chat_room">>, Body, Req, State) when ((Method =:= <<"POST">>) o
     UserName = parse_qs(<<"username">>, Req),
     case get_body(<<"textusername">>, Body) of
         undefined ->
-            %% js request absent.
-            %% a user has already entered the room before.
-            case chat_room_server:is_user_connected(UserName) of
-                true  -> chat_room_page(Method, UserName, Body, Req, State);
-                false -> home_page(please_register, Req, State)
-            end;
-        Value ->
+            %% js request absents.
+            %% a user has already entered the room before or simply (re-)enters the page
+            home_page(please_register, Req, State);
+        TextUserNameValue ->
             %% js request when a user is entering the room.
-            chat_room_server:connect_user(UserName),
-            chat_room_page(Method, Value, Body, Req, State)
+            case parse_header(<<"referer">>, Req) of
+                undefined ->
+                    home_page(please_register, Req, State);
+                RefererValue ->
+                    case re:run(binary:list_to_bin(RefererValue), <<".*/$">>) of
+                        {match, Capture} ->
+                            chat_room_server:connect_user(TextUserNameValue),
+                            chat_room_server:save_pid({maps:get(pid, Req, self()), TextUserNameValue}),
+                            chat_room_page(Method, TextUserNameValue, Body, Req, State);
+                        nomatch ->
+                            home_page(please_register, Req, State)
+                    end
+            end
     end;
 init(_Method, _Path, _Body, Req, State) ->
     NewReq = cowboy_req:reply(405, #{}, <<"method not allowed">>, Req),
@@ -90,6 +98,7 @@ websocket_terminate(_Reason, _Req, _State) ->
 terminate(Reason, _Req, _State) ->
     logger:debug("terminate with Reason: ~p",[Reason]),
     case Reason of
+        normal -> chat_room_server:delete_pid();
         timeout -> chat_room_server:delete_pid();
         {remote, _, _} -> chat_room_server:delete_pid();
         _ -> ok
@@ -149,6 +158,14 @@ get_body(Key, UriBody) ->
 
 parse_qs(Key, Req) ->
     try binary:bin_to_list(proplists:get_value(Key, cowboy_req:parse_qs(Req))) of
+        Value -> Value
+    catch
+        _:_ -> undefined
+    end.
+
+parse_header(Key, Req) ->
+    %% cowboy_req:parse_header/2/3 with cowh_http_hd:parse_referer/1 do not exist yet.
+    try binary:bin_to_list(maps:get(Key, maps:get(headers, Req, undefined), undefined)) of
         Value -> Value
     catch
         _:_ -> undefined
